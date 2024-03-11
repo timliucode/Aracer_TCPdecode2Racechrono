@@ -1,28 +1,27 @@
-from twisted.conch.telnet import StatefulTelnetProtocol
-from twisted.internet import reactor, protocol, task
-import re
-
-
-ip_value, watchdog_value, init_value = 0, 0, 0  # 定義全域變數
-
 def read_config():
-    global ip_value, watchdog_value, init_value
-    # 打開文本文件
-    with open('config.txt', 'r') as file:
-        # 讀取文件內容
-        content = file.read()
+    # 讀取 config.txt 檔案
+    with open('config.txt', 'r') as f:
+        lines = f.readlines()
 
-        # 使用正則表達式搜尋雙引號內的內容
-        matches = re.findall(r'"(.*?)"', content)
+    # 將 ip 和 watchdog 的值設為變數
+    ip = lines[1].strip()
+    watchdog = lines[4].strip()
 
-        # 將讀取到的值分別存入變數
-        ip_value, watchdog_value, init_value = matches
+    # 將 init 內容設為陣列
+    init = [line.strip() for line in lines[7:]]
 
+    return ip, watchdog, init
+
+
+def checksum(cs):  # 計算NMEA0183校驗和
+    checksum = 0
+    for s in cs:
+        checksum ^= ord(s)
+    return '{:02X}'.format(checksum)
 
 
 if __name__ == '__main__':
-    read_config()
-    # 印出讀取到的值
-    print("IP:", ip_value)
-    print("Watchdog:", watchdog_value)
-    print("Init:", init_value)
+    ip, watchdog, init = read_config()
+    print('ip:', ip)
+    print('watchdog:', watchdog)
+    print('init:', init)

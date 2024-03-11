@@ -1,0 +1,1 @@
+這是一個aracer x系列的wifi及時資訊轉racechhrono rc3的轉換程式
