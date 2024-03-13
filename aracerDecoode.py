@@ -20,3 +20,9 @@ data01~07 數據實際內容
 checksum是LRC校驗碼
 
 """
+
+
+def convert(data):
+    conv = memoryview(data)
+    print(conv)
+

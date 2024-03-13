@@ -1,5 +1,7 @@
 from twisted.internet import reactor, protocol, defer
 
+import aracerDecoode
+
 
 def read_config(config):
     # 讀取 config.txt 檔案
@@ -46,11 +48,10 @@ class EcuClient(protocol.Protocol):
         reactor.callLater(1, self.send_watchdog)
 
     def dataReceived(self, data):
-        print(f"Received data: {data}")
         # 使用 Deferred 將接收到的數據轉交給外部函數處理
-        # d = defer.Deferred()
-        # d.addCallback(processData, self)
-        # d.callback(data)
+        rc3 = defer.Deferred()
+        rc3.addCallback(aracerDecoode.convert)
+        rc3.callback(data)
 
 
 class EcuClientFactory(protocol.ReconnectingClientFactory):
@@ -70,17 +71,50 @@ class EcuClientFactory(protocol.ReconnectingClientFactory):
         self.retry(connector)
 
 
+class MyServerProtocol(protocol.Protocol):
+    def connectionMade(self):
+        print("Client connected")
+        if hasattr(self, 'factory'):
+            self.factory.clients.append(self)
+
+    def dataReceived(self, data):
+        message = data.decode()
+        print(f"Received message: {message}")
+
+        # 将接收到的消息广播给所有客户端
+        if hasattr(self, 'factory'):
+            self.factory.broadcast(data)
+            print(f"Broadcasted message to all clients: {message}")
+
+    def connectionLost(self, reason):
+        print("Connection lost")
+        if hasattr(self, 'factory'):
+            self.factory.clients.remove(self)
+
+
+class MyServerFactory(protocol.Factory):
+    def __init__(self):
+        self.clients = []
+
+    def buildProtocol(self, addr):
+        protocol_instance = MyServerProtocol()
+        protocol_instance.factory = self  # 设置factory属性
+        return protocol_instance
+
+    def broadcast(self, message):
+        for client in self.clients:
+            client.transport.write(message)
+
 if __name__ == '__main__':
     ip, watchdog, init = read_config('config.txt')
     print('ip:', ip)
-    print('watchdog:', watchdog)
-    print('init:', init)
-    for i in init:
-        print(i)
 
-    server_ip = "192.168.1.220"
-    server_port = 12345
+    server_ip = "192.168.88.88"
+    server_port = 6666
 
-    factory = EcuClientFactory()
-    reactor.connectTCP(server_ip, server_port, factory)
+    reactor.connectTCP(server_ip, server_port, EcuClientFactory())
+
+    port = 7776
+    reactor.listenTCP(port, MyServerFactory())
+    print(f"Server listening on port {port}")
     reactor.run()
