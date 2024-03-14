@@ -20,16 +20,16 @@ data01~07 數據實際內容
 checksum是LRC校驗碼
 
 """
+ID = '0182'  # CAN ID (這是monitor的ID)
+length = 19  # 1個CAN包加上前綴及checksum的長度
 
 
 def convert(data):
     buffer = b""  # 用於存放不完整的數據
-    length = 19  # 數據的長度
-
     buffer += data  # 將收到的數據添加到 buffer 中
     while len(buffer) >= length:  # 如果 buffer 中的數據大於等於一條數據的長度
         message = buffer[:length]  # 獲取一條數據
         buffer = buffer[length:]  # 從 buffer 中刪除這條數據
-        if message[6:8] == b'\x01\x82':  # 如果是 ECU monitor的數據
-            print(f"Received: {message}")
-            
+        if message[6:8] == bytes.fromhex(ID):  # 如果這條數據的ID是我們需要的
+            mv = memoryview(message)
+

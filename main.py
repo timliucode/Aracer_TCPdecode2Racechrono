@@ -71,7 +71,7 @@ class EcuClientFactory(protocol.ReconnectingClientFactory):
         self.retry(connector)
 
 
-class MyServerProtocol(protocol.Protocol):
+class RC3server(protocol.Protocol):
     def connectionMade(self):
         print("Client connected")
         if hasattr(self, 'factory'):
@@ -92,12 +92,12 @@ class MyServerProtocol(protocol.Protocol):
             self.factory.clients.remove(self)
 
 
-class MyServerFactory(protocol.Factory):
+class RC3serverFactory(protocol.Factory):
     def __init__(self):
         self.clients = []
 
     def buildProtocol(self, addr):
-        protocol_instance = MyServerProtocol()
+        protocol_instance = RC3server()
         protocol_instance.factory = self  # 设置factory属性
         return protocol_instance
 
@@ -115,6 +115,6 @@ if __name__ == '__main__':
     reactor.connectTCP(server_ip, server_port, EcuClientFactory())
 
     port = 7776
-    reactor.listenTCP(port, MyServerFactory())
+    reactor.listenTCP(port, RC3serverFactory())
     print(f"Server listening on port {port}")
     reactor.run()
