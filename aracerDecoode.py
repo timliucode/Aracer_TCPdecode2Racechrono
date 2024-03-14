@@ -23,6 +23,13 @@ checksum是LRC校驗碼
 
 
 def convert(data):
-    conv = memoryview(data)
-    print(conv)
+    buffer = b""  # 用於存放不完整的數據
+    length = 19  # 數據的長度
 
+    buffer += data  # 將收到的數據添加到 buffer 中
+    while len(buffer) >= length:  # 如果 buffer 中的數據大於等於一條數據的長度
+        message = buffer[:length]  # 獲取一條數據
+        buffer = buffer[length:]  # 從 buffer 中刪除這條數據
+        if message[6:8] == b'\x01\x82':  # 如果是 ECU monitor的數據
+            print(f"Received: {message}")
+            
