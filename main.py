@@ -44,7 +44,11 @@ class EcuClient(protocol.Protocol):
         rc3 = defer.Deferred()
         rc3.addCallback(decoode.convert)
         rc3.addCallback(broadcast)
-        rc3.callback((factory.clients, data))
+        rc3.callback(data)
+
+def test(data):
+    print("data")
+    return data
 
 
 class EcuClientFactory(protocol.ReconnectingClientFactory):
@@ -86,10 +90,10 @@ class RC3serverFactory(protocol.Factory):
         return protocol_instance
 
 
-def broadcast(args):
-    clients, message = args
+def broadcast(message):
+    clients = factory.clients
     for client in clients:
-        client.transport.write(message.tobytes())
+        client.transport.write(message.encode())
 
 
 if __name__ == '__main__':

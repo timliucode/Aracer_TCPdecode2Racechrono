@@ -24,8 +24,7 @@ ID = '0182'  # CAN ID (這是monitor的ID)
 length = 19  # 1個CAN包加上前綴及checksum的長度
 
 
-def convert(args):
-    clients, data = args
+def convert(data):
     buffer = b""  # 用於存放不完整的數據
     buffer += data  # 將收到的數據添加到 buffer 中
     while len(buffer) >= length:  # 如果 buffer 中的數據大於等於一條數據的長度
@@ -47,7 +46,7 @@ def convert(args):
                 gps_lon_sec = int.from_bytes(message[16:18], byteorder='big')
             elif message[10] == 3:
                 gps_lon_ew = chr(message[11])
-                gps_valid = message[12]
+                gps_valid = chr(message[12])
                 gps_speed = int.from_bytes(message[13:15], byteorder='big') * 0.539956803
             elif message[10] == 4:
                 rpm = int.from_bytes(message[14:16], byteorder='big')
@@ -68,8 +67,32 @@ def convert(args):
                 racelanuh_en = message[14]
                 tc_status = message[15]
 
-                
+            else:   # 如果變數都都蒐集完成後，填入數據
+                if gps_valid == "A":
+                    quality = 1
+                elif gps_valid == "V":
+                    quality = 0
 
+                # $GNGGA,041245.800,2450.57532,N,12112.04516,E,2       ,8        ,1.08   ,311.00,M      ,    ,M      ,       , *7F
+                # $定位 ,時間       ,緯度      ,北,經度      ,東,定位品質,可見衛星數,水平精度,海拔  ,海拔單位,高程,高程單位,差分時間,差分站ID*校驗碼
+                # 定位品質說明:0=無效,1=GPS,2=DGPS,3=PPS,6=估算值
+                GGA = f"GNGGA,{gps_utc_hh}{gps_utc_mm}{gps_utc_ss}.{gps_utc_ms},{gps_lat_deg}{gps_lat_min}.{gps_lat_sec}{gps_lat_ns},{gps_lon_deg}{gps_lon_min}.{gps_lon_sec}{gps_lon_ew},{quality},{gps_speed},,,,,,,,"
+
+                # $GPRMC,041245.800,A   ,2450.57532,N,12112.04516,E,36.08       ,148.58,020122,     ,         ,       *1D
+                # $定位 ,時間       ,狀態,緯度      ,北,經度       ,東,速度(knot節),方位角 ,日月年,磁偏角,磁偏角方向,模式指示*校驗碼
+                # 狀態說明:A=有效定位，V=無效定位，一節=1.852公里/小時，模式指示說明:A=自動，D=差分，E=估算，N=數據無效，S=模擬
+                RMC = f"GPRMC,{gps_utc_hh}{gps_utc_mm}{gps_utc_ss}.{gps_utc_ms},{gps_valid},{gps_lat_deg}{gps_lat_min}.{gps_lat_sec}{gps_lat_ns},{gps_lon_deg}{gps_lon_min}.{gps_lon_sec}{gps_lon_ew},{gps_speed},,,,,"
+
+                # $RC3,[time],[count],[xacc],[yacc],[zacc],[gyrox],[gyroy],[gyroz],[rpm/d1],[d2],[a1],[a2],[a3],[a4],[a5],[a6],[a7],[a8],[a9],[a10],[a11],[a12],[a13],[a14],[a15]*[checksum]
+                RC3 = f"RC3,{gps_utc_hh}{gps_utc_mm}{gps_utc_ss}.{gps_utc_ms},,,,,,,,{rpm},{tps},{vss1},{vss2},{tc_lean_angle},{tc_vss_fr_rate},{volt_batt},{t_eng},{t_air},{afr_wbo2_1},{afr_wbo2_2},{cyl1_eng_ap},{cyl1_eng_ap_decimal},{racelanuh_en}"
+
+                GNGGA = f"${GGA}*{checksum(GGA)}\n"
+                GNRMC = f"${RMC}*{checksum(RMC)}\n"
+                RC3out = f"${RC3}*{checksum(RC3)}\n"
+
+                result = GNGGA + GNRMC + RC3out
+
+                return result
 
 
 
@@ -78,3 +101,10 @@ def checksum(cs):  # 計算NMEA0183校驗和
     for s in cs:
         checksum ^= ord(s)
     return '{:02X}'.format(checksum)
+
+
+if __name__ == '__main__':
+    data = "f801c00e00000182000801043a2002581901d4f801c00e0000018200080202654e791802a6b7f801c00e00000182000803454100008000801ef801c00e0000018200080400800000002b00f8f801c00e00000182000805008000053a3a09a0f801c00e00000182000806fb6428000000001af801c00e000001820008070000001000000090f801c00e0000018200068800008500ff00009d"
+    byte_data = bytes.fromhex(data)
+    #convert(byte_data)
+    print(convert(byte_data))
