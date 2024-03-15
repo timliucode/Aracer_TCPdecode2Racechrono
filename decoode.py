@@ -68,9 +68,10 @@ def convert(data):
                 tc_status = message[15]
 
             else:   # 如果變數都都蒐集完成後，填入數據
+
                 if gps_valid == "A":
                     quality = 1
-                elif gps_valid == "V":
+                else: # 如果GPS無效
                     quality = 0
 
                 # $GNGGA,041245.800,2450.57532,N,12112.04516,E,2       ,8        ,1.08   ,311.00,M      ,    ,M      ,       , *7F
