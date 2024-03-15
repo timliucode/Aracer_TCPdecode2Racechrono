@@ -1,6 +1,6 @@
 from twisted.internet import reactor, protocol, defer
 
-import aracerDecoode
+import decoode
 
 
 def read_config(config):
@@ -16,13 +16,6 @@ def read_config(config):
     init = [bytes.fromhex(line.strip()) for line in lines[7:]]
 
     return ip, watchdog, init
-
-
-def checksum(cs):  # 計算NMEA0183校驗和
-    checksum = 0
-    for s in cs:
-        checksum ^= ord(s)
-    return '{:02X}'.format(checksum)
 
 
 # 這個class是用來與ECU通訊的
@@ -49,10 +42,9 @@ class EcuClient(protocol.Protocol):
     def dataReceived(self, data):
         # 使用 Deferred 將接收到的數據轉交給外部函數處理
         rc3 = defer.Deferred()
-        rc3.addCallback(aracerDecoode.convert)
-        rc3.addCallback(aracerDecoode.broadcast)
+        rc3.addCallback(decoode.convert)
+        rc3.addCallback(broadcast)
         rc3.callback((factory.clients, data))
-
 
 
 class EcuClientFactory(protocol.ReconnectingClientFactory):
@@ -78,7 +70,6 @@ class RC3server(protocol.Protocol):
         if hasattr(self, 'factory'):
             self.factory.clients.append(self)
 
-
     def connectionLost(self, reason):
         print("Connection lost")
         if hasattr(self, 'factory'):
@@ -94,6 +85,11 @@ class RC3serverFactory(protocol.Factory):
         protocol_instance.factory = self  # 设置factory属性
         return protocol_instance
 
+
+def broadcast(args):
+    clients, message = args
+    for client in clients:
+        client.transport.write(message.tobytes())
 
 
 if __name__ == '__main__':
