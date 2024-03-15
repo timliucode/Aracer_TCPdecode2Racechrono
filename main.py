@@ -18,24 +18,41 @@ def read_config(config):
     return watchdog, init
 
 
+# 這個class是用來處理ECU UDP發現的
 class EcuUDPdiscover(DatagramProtocol):
+    def __init__(self):
+        self.timeout_deferred = None  # 初始化timeout_deferred屬性
+
+    # 連線成功後執行
+    def startProtocol(self):
+        self.timeout_deferred = reactor.callLater(10, self.timeout)  # 設定10秒的超時時間
+
+    # 接收數據
     def datagramReceived(self, datagram, address):
-        if b'aRacer' in datagram:
-            print(f"Received a packet containing 'aRacer' from {address}")
-            ecuConnect(address[0])
-            self.transport.stopListening()
+        if b'aRacer' in datagram:  # 如果收到了aracer的關鍵字
+            print(f"Received a packet containing 'aRacer' from {address}")  # 打印收到的數據
+            ecuConnect(address[0])  # 連接ECU
+            self.transport.stopListening()  # 停止監聽
+            if self.timeout_deferred.active():  # 如果收到了期望的關鍵字，取消超時操作
+                self.timeout_deferred.cancel()
+
+    # 超時操作
     def timeout(self):
-        self.transport.stopListening()
         print("Timeout")
+        self.transport.stopListening()  # 停止監聽
+        ecuConnect("192.168.88.88")  # 連接預設ECU IP位置
 
 
+# 建立新的UDP接收器
 def ecuUDPdiscoverStart():
-    # 建立新的UDP接收器
-    reactor.listenUDP(8888, EcuUDPdiscover())
+    udp = EcuUDPdiscover()
+    reactor.listenUDP(8888, udp)
     print("Listening for UDP packets...")
 
 
+# 連接ECU
 def ecuConnect(ecu_ip):
+    print('connect ip:', ecu_ip)
     reactor.connectTCP(ecu_ip, ecu_port, EcuClientFactory())  # 連接ECU
 
 
@@ -130,13 +147,8 @@ def broadcast(message):
 
 
 if __name__ == '__main__':
-
     ecu_port = 6666
     ecuUDPdiscoverStart()  # 啟動ECU UDP發現
-
-    #ecu_ip = "localhost"  # ECU的IP地址，測試時可以直接從這裡修改
-    # ecu_ip = "192.168.88.88"          # ECU的IP地址，實際使用時從config.txt文件中讀取
-    #print('ip:', ecu_ip)
 
     factory = RC3serverFactory()  # 創建RC3serverFactory實例
     ports = range(7777, 7781)  # 服務器端口範圍，這麼做的原因是方便racechrono選擇僅RC3還是RC3+NMEA
