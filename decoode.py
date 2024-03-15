@@ -93,6 +93,7 @@ def convert(data):
                 result = GNGGA + GNRMC + RC3out
 
                 return result
+    return data.hex()
 
 
 
