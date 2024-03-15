@@ -67,11 +67,11 @@ def convert(data):
                 racelanuh_en = message[14]
                 tc_status = message[15]
 
-            else:   # 如果變數都都蒐集完成後，填入數據
+            else:  # 如果變數都都蒐集完成後，填入數據
 
                 if gps_valid == "A":
                     quality = 1
-                else: # 如果GPS無效
+                else:  # 如果GPS無效
                     quality = 0
 
                 # $GNGGA,041245.800,2450.57532,N,12112.04516,E,2       ,8        ,1.08   ,311.00,M      ,    ,M      ,       , *7F
@@ -97,7 +97,6 @@ def convert(data):
     return ""
 
 
-
 def checksum(cs):  # 計算NMEA0183校驗和
     checksum = 0
     for s in cs:
@@ -108,5 +107,5 @@ def checksum(cs):  # 計算NMEA0183校驗和
 if __name__ == '__main__':
     data = "f801c00e00000182000801043a2002581901d4f801c00e0000018200080202654e791802a6b7f801c00e00000182000803454100008000801ef801c00e0000018200080400800000002b00f8f801c00e00000182000805008000053a3a09a0f801c00e00000182000806fb6428000000001af801c00e000001820008070000001000000090f801c00e0000018200068800008500ff00009d"
     byte_data = bytes.fromhex(data)
-    #convert(byte_data)
+    # convert(byte_data)
     print(convert(byte_data))

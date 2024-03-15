@@ -1,5 +1,6 @@
 import threading
 import tkinter as tk
+
 from twisted.internet import protocol
 from twisted.internet import reactor
 from twisted.python import log
@@ -11,6 +12,7 @@ def aracerChecksum(data):
     lrc_byte = ((~lrc_byte) + 1) & 0xff
     lrc_byte = lrc_byte - 7 if lrc_byte >= 7 else lrc_byte + 249  # 适当调整有符号数的值
     return "{:02X}".format(lrc_byte)
+
 
 class HexadecimalInputWindow:
     def __init__(self):
@@ -41,10 +43,9 @@ class HexadecimalInputWindow:
     def print_inputs(self):
         global values
         values = [input_var.get().upper() for input_var in self.inputs]
-        joinValues = "f801c00e000001820008"+"".join(values)
+        joinValues = "f801c00e000001820008" + "".join(values)
         AracerjoinValues = joinValues + aracerChecksum(joinValues)
         print(AracerjoinValues)
-
 
     def clear_inputs(self):
         for input_var in self.inputs:
@@ -76,7 +77,6 @@ class Proxy(protocol.Protocol):
             self.peer.transport.write(data)
         elif datae[0:16] == "f801c00e00000182":
             self.peer.transport.write(stre)
-
 
 
 class ProxyClient(Proxy):
