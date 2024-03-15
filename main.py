@@ -13,7 +13,7 @@ def read_config(config):
     watchdog = bytes.fromhex(lines[1].strip())
 
     # 將 init 內容設為陣列並轉換成 bytes
-    init = [bytes.fromhex(line.strip()) for line in lines[7:]]
+    init = [bytes.fromhex(line.strip()) for line in lines[4:]]
 
     return watchdog, init
 
