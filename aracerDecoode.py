@@ -24,7 +24,8 @@ ID = '0182'  # CAN ID (這是monitor的ID)
 length = 19  # 1個CAN包加上前綴及checksum的長度
 
 
-def convert(data):
+def convert(args):
+    clients, data = args
     buffer = b""  # 用於存放不完整的數據
     buffer += data  # 將收到的數據添加到 buffer 中
     while len(buffer) >= length:  # 如果 buffer 中的數據大於等於一條數據的長度
@@ -32,4 +33,10 @@ def convert(data):
         buffer = buffer[length:]  # 從 buffer 中刪除這條數據
         if message[6:8] == bytes.fromhex(ID):  # 如果這條數據的ID是我們需要的
             mv = memoryview(message)
+    return (clients, mv)
 
+
+def broadcast(args):
+    clients, message = args
+    for client in clients:
+        client.transport.write(message.tobytes())

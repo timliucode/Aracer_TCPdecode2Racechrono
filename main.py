@@ -50,8 +50,9 @@ class EcuClient(protocol.Protocol):
         # 使用 Deferred 將接收到的數據轉交給外部函數處理
         rc3 = defer.Deferred()
         rc3.addCallback(aracerDecoode.convert)
-        rc3.callback(data)
-        broadcast(factory.clients, data)
+        rc3.addCallback(aracerDecoode.broadcast)
+        rc3.callback((factory.clients, data))
+
 
 
 class EcuClientFactory(protocol.ReconnectingClientFactory):
@@ -93,10 +94,6 @@ class RC3serverFactory(protocol.Factory):
         protocol_instance.factory = self  # 设置factory属性
         return protocol_instance
 
-
-def broadcast(clients, message):
-    for client in clients:
-        client.transport.write(message)
 
 
 if __name__ == '__main__':
