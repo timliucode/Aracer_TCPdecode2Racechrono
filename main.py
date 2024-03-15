@@ -42,7 +42,6 @@ class EcuClient(protocol.Protocol):
             self.transport.write(item)
             reactor.callLater(0.01, self.send_init)
 
-
     def send_watchdog(self):
         self.transport.write(self.watchdog)
         reactor.callLater(1, self.send_watchdog)
@@ -52,6 +51,7 @@ class EcuClient(protocol.Protocol):
         rc3 = defer.Deferred()
         rc3.addCallback(aracerDecoode.convert)
         rc3.callback(data)
+        broadcast(factory.clients, data)
 
 
 class EcuClientFactory(protocol.ReconnectingClientFactory):
@@ -77,14 +77,6 @@ class RC3server(protocol.Protocol):
         if hasattr(self, 'factory'):
             self.factory.clients.append(self)
 
-    def dataReceived(self, data):
-        message = data.decode()
-        print(f"Received message: {message}")
-
-        # 将接收到的消息广播给所有客户端
-        if hasattr(self, 'factory'):
-            self.factory.broadcast(data)
-            print(f"Broadcasted message to all clients: {message}")
 
     def connectionLost(self, reason):
         print("Connection lost")
@@ -101,20 +93,23 @@ class RC3serverFactory(protocol.Factory):
         protocol_instance.factory = self  # 设置factory属性
         return protocol_instance
 
-    def broadcast(self, message):
-        for client in self.clients:
-            client.transport.write(message)
+
+def broadcast(clients, message):
+    for client in clients:
+        client.transport.write(message)
+
 
 if __name__ == '__main__':
     ip, watchdog, init = read_config('config.txt')
     print('ip:', ip)
 
-    server_ip = "192.168.88.88"
-    server_port = 6666
+    server_ip = "192.168.1.220"
+    server_port = 12345
 
     reactor.connectTCP(server_ip, server_port, EcuClientFactory())
 
-    port = 7776
-    reactor.listenTCP(port, RC3serverFactory())
+    port = 6666
+    factory = RC3serverFactory()
+    reactor.listenTCP(port, factory)
     print(f"Server listening on port {port}")
     reactor.run()
