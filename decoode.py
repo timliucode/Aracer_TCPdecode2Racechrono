@@ -20,6 +20,11 @@ data01~07 數據實際內容
 checksum是LRC校驗碼
 
 """
+
+import ast
+import inspect
+import re
+
 ID = '0182'  # CAN ID (這是monitor的ID)
 length = 19  # 1個CAN包加上前綴及checksum的長度
 
@@ -67,7 +72,7 @@ def convert(data):
                 racelanuh_en = message[14]
                 tc_status = message[15]
 
-            else:  # 如果變數都都蒐集完成後，填入數據
+            else:  # 如果變數都都蒐集完成後，填入數據(btw,必須是前面數據蒐集完成後才能填入，否則變數尚未賦值，會報錯)
 
                 if gps_valid == "A":
                     quality = 1
@@ -92,7 +97,6 @@ def convert(data):
                 RC3out = f"${RC3}*{checksum(RC3)}\n"
 
                 result = GNGGA + GNRMC + RC3out
-
                 return result
     return ""
 
@@ -104,8 +108,36 @@ def checksum(cs):  # 計算NMEA0183校驗和
     return '{:02X}'.format(checksum)
 
 
+def get_variable_expr(func, var_name):
+    """
+    獲取函數中指定變量的賦值表達式
+
+    Args:
+        func (callable): 包含要獲取變量的函數
+        var_name (str): 要獲取表達式的變量名
+
+    Returns:
+        str: 變量的賦值表達式字符串
+    """
+    # 獲取函數源代碼
+    source = inspect.getsource(func)
+    tree = ast.parse(source)
+
+    # 遍歷抽象語法樹,找到指定變量的賦值語句
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign) and len(node.targets) == 1:
+            name = node.targets[0].id
+            if name == var_name:
+                # 獲取原始賦值表達式的字符串
+                expr_str = source.split('\n')[node.value.lineno - 1].split('=', 1)[1].strip()
+                return f"{name} = {expr_str}"
+
+    raise ValueError(f"Variable '{var_name}' not found in function '{func.__name__}'")
+
+
 if __name__ == '__main__':
     data = "f801c00e00000182000801043a2002581901d4f801c00e0000018200080202654e791802a6b7f801c00e00000182000803454100008000801ef801c00e0000018200080400800000002b00f8f801c00e00000182000805008000053a3a09a0f801c00e00000182000806fb6428000000001af801c00e000001820008070000001000000090f801c00e0000018200068800008500ff00009d"
     byte_data = bytes.fromhex(data)
-    # convert(byte_data)
-    print(convert(byte_data))
+    value = convert(byte_data)
+    print(value)
+    print(get_variable_expr(convert, 'RC3'))

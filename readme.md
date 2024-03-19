@@ -14,5 +14,7 @@ TwistedProxyCalcTk.py是用來讓你測試ECU的數據對應的資訊為何
 
 本項目尚未完成，僅完成上一版的通訊功能，還沒完成轉譯部分的內容。
 
-PS:
-有想過UDP掃過ECU位置後再連線，省下設定IP麻煩，但想到通常使用環境都是直連ECU，那IP自然固定就算了
+TODO:
+增加Proxy讓ECU與專用軟體連線，同時還能讀取資訊(需TCPserver、UDPserver)
+
+修正decode
