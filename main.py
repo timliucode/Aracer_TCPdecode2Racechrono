@@ -32,7 +32,7 @@ class EcuUDPdiscover(DatagramProtocol):
     def datagramReceived(self, datagram, address):
         if b'aRacer' in datagram:  # 如果收到了aracer的關鍵字
             print(f"Received a packet containing 'aRacer' from {address}")  # 打印收到的數據
-            ecuConnect(address[0],ecu)  # 連接ECU
+            ecuConnect(address[0])  # 連接ECU
             self.transport.stopListening()  # 停止監聽
             if self.timeout_deferred.active():  # 如果收到了期望的關鍵字，取消超時操作
                 self.timeout_deferred.cancel()
@@ -52,9 +52,9 @@ def ecuUDPdiscoverStart():
 
 
 # 連接ECU
-def ecuConnect(ecu_ip,ecu):
+def ecuConnect(ecu_ip):
     print('connect ip:', ecu_ip)
-    reactor.connectTCP(ecu_ip, ecu_port, ecu)  # 連接ECU
+    reactor.connectTCP(ecu_ip, ecu_port, EcuClientFactory())  # 連接ECU
 
 
 # 這個class是用來處理ECU通訊的
@@ -89,9 +89,6 @@ class EcuClient(protocol.Protocol):
         rc3.addCallback(decoode.convert)  # 添加一個外部decode回調函數
         rc3.addCallback(broadcast)  # 添加一個向server發送數據的回調函數
         rc3.callback(data)  # 調用callback方法，將數據傳遞給回調函數
-        ACC = proxy.clients  # 獲取clients列表
-        for AC in ACC:  # 遍歷clients列表
-            AC.transport.write(data)  # 向每個客戶端發送數據
 
 
 # 這個class是用來創建EcuClient的
@@ -150,39 +147,11 @@ def broadcast(message):
         client.transport.write(message.encode())  # 向每個客戶端發送數據
 
 
-class ProxyClient(protocol.Protocol):  # 讓sofeware連接到server
-    def connectionMade(self):
-        print("Client connected")
-        if hasattr(self, 'factory'):  # 如果有factory屬性
-            self.factory.clients.append(self)  # 將自己添加到clients列表中
-
-    def dataReceived(self, data):
-        ecu.protocol.transport.write(data)
-
-    def connectionLost(self, reason):
-        print("Connection lost")
-        if hasattr(self, 'factory'):  # 如果有factory屬性
-            self.factory.clients.remove(self)  # 將自己從clients列表中移除
-
-
-class ProxyFactory(protocol.Factory):  # 讓sofeware連接到server
-    def __init__(self):
-        self.clients = []
-
-    def buildProtocol(self, addr):
-        protocol_instance = ProxyClient()  # 創建一個RC3server實例
-        protocol_instance.factory = self  # 设置factory属性
-        return protocol_instance  # 返回protocol實例
-
-
 if __name__ == '__main__':
     timeout = 10  # 設置超時時間
     default_ecu_ip = "192.168.88.88"  # 預設ECU IP位置
     ecu_port = 6666
     ecuUDPdiscoverStart()  # 啟動ECU UDP發現
-
-    proxy = ProxyFactory()
-    reactor.listenTCP(6667, proxy)
 
     factory = RC3serverFactory()  # 創建RC3serverFactory實例
     ports = range(7777, 7781)  # 服務器端口範圍，這麼做的原因是方便racechrono選擇僅RC3還是RC3+NMEA
