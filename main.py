@@ -1,4 +1,5 @@
 from twisted.internet import reactor, protocol, defer
+from twisted.internet.error import CannotListenError
 from twisted.internet.protocol import DatagramProtocol
 
 import decoode
@@ -25,7 +26,7 @@ class EcuUDPdiscover(DatagramProtocol):
 
     # 連線成功後執行
     def startProtocol(self):
-        self.timeout_deferred = reactor.callLater(10, self.timeout)  # 設定10秒的超時時間
+        self.timeout_deferred = reactor.callLater(timeout, self.timeout)  # 設定10秒的超時時間
 
     # 接收數據
     def datagramReceived(self, datagram, address):
@@ -40,7 +41,7 @@ class EcuUDPdiscover(DatagramProtocol):
     def timeout(self):
         print("Timeout")
         self.transport.stopListening()  # 停止監聽
-        ecuConnect("192.168.88.88")  # 連接預設ECU IP位置
+        ecuConnect(default_ecu_ip)  # 連接預設ECU IP位置
 
 
 # 建立新的UDP接收器
@@ -147,13 +148,18 @@ def broadcast(message):
 
 
 if __name__ == '__main__':
+    timeout = 10  # 設置超時時間
+    default_ecu_ip = "192.168.88.88"  # 預設ECU IP位置
     ecu_port = 6666
     ecuUDPdiscoverStart()  # 啟動ECU UDP發現
 
     factory = RC3serverFactory()  # 創建RC3serverFactory實例
     ports = range(7777, 7781)  # 服務器端口範圍，這麼做的原因是方便racechrono選擇僅RC3還是RC3+NMEA
     for port in ports:
-        reactor.listenTCP(port, factory)
-    print(f"Server listening on port {ports}")
+        try:
+            reactor.listenTCP(port, factory)
+            print(f"Server listening on port {port}")
+        except CannotListenError:
+            print(f"Port {port} is already in use, skipping...")
 
     reactor.run()
