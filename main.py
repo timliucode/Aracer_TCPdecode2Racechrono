@@ -1,13 +1,12 @@
 from twisted.internet import reactor, protocol, defer
-from twisted.internet.error import CannotListenError
 from twisted.internet.protocol import DatagramProtocol
 
 import decoode
 
 
 # 讀取 config.txt 檔案
-def read_config(config):
-    with open(config, 'r') as f:
+def read_config():
+    with open(config_file, 'r') as f:
         lines = f.readlines()
 
     # 將 watchdog 的值設為變數並轉換成 bytes
@@ -26,12 +25,12 @@ class EcuUDPdiscover(DatagramProtocol):
 
     # 連線成功後執行
     def startProtocol(self):
-        self.timeout_deferred = reactor.callLater(timeout, self.timeout)  # 設定10秒的超時時間
+        self.timeout_deferred = reactor.callLater(timeout, self.timeout)  # 設定超時時間
 
     # 接收數據
     def datagramReceived(self, datagram, address):
-        if b'aRacer' in datagram:  # 如果收到了aracer的關鍵字
-            print(f"Received a packet containing 'aRacer' from {address}")  # 打印收到的數據
+        if ecu_find_str in datagram:  # 如果收到了關鍵字
+            print(f"find ECU at {address}")
             ecuConnect(address[0])  # 連接ECU
             self.transport.stopListening()  # 停止監聽
             if self.timeout_deferred.active():  # 如果收到了期望的關鍵字，取消超時操作
@@ -39,7 +38,7 @@ class EcuUDPdiscover(DatagramProtocol):
 
     # 超時操作
     def timeout(self):
-        print("Timeout")
+        print("DiscoverTimeout，connect to default ECU IP")
         self.transport.stopListening()  # 停止監聽
         ecuConnect(default_ecu_ip)  # 連接預設ECU IP位置
 
@@ -47,13 +46,13 @@ class EcuUDPdiscover(DatagramProtocol):
 # 建立新的UDP接收器
 def ecuUDPdiscoverStart():
     udp = EcuUDPdiscover()
-    reactor.listenUDP(8888, udp)
-    print("Listening for UDP packets...")
+    reactor.listenUDP(ecu_udp_port, udp)
+    print("Discover ECU...")
 
 
 # 連接ECU
 def ecuConnect(ecu_ip):
-    print('connect ip:', ecu_ip)
+    print('connect ecu ip:', ecu_ip)
     reactor.connectTCP(ecu_ip, ecu_port, EcuClientFactory())  # 連接ECU
 
 
@@ -61,11 +60,11 @@ def ecuConnect(ecu_ip):
 class EcuClient(protocol.Protocol):
     # 初始化config.txt的內容
     def __init__(self):
-        self.watchdog, self.init = read_config('config.txt')
+        self.watchdog, self.init = read_config()  # 讀取config.txt的內容
 
     # 連線成功後執行
     def connectionMade(self):
-        print("Connected to the server.")
+        print("Connected to the ecu.")
         self.transport.setTcpNoDelay(True)  # 關閉 Nagle 算法
         self.send_init()  # 發送初始化數據
         reactor.callLater(1, self.send_watchdog)  # 每1秒發送一次 watchdog
@@ -90,6 +89,9 @@ class EcuClient(protocol.Protocol):
         rc3.addCallback(broadcast)  # 添加一個向server發送數據的回調函數
         rc3.callback(data)  # 調用callback方法，將數據傳遞給回調函數
 
+    def connectionLost(self, reason):
+        print("ecu Connection lost, try to reconnect...")
+
 
 # 這個class是用來創建EcuClient的
 class EcuClientFactory(protocol.ReconnectingClientFactory):
@@ -97,19 +99,8 @@ class EcuClientFactory(protocol.ReconnectingClientFactory):
 
     # 創建protocol
     def buildProtocol(self, addr):
-        print("Building protocol...")
         self.resetDelay()  # 重置延遲
         return self.protocol()
-
-    def clientConnectionFailed(self, connector, reason):
-        if self.continueTrying:
-            self.connector = connector
-            self.retry()
-
-    def clientConnectionLost(self, connector, unused_reason):
-        if self.continueTrying:
-            self.connector = connector
-            self.retry()
 
 
 # 這個class是用來處理RC3server通訊的
@@ -122,7 +113,7 @@ class RC3server(protocol.Protocol):
 
     # 連線失敗後執行
     def connectionLost(self, reason):
-        print("Connection lost")
+        print("Client Connection lost")
         if hasattr(self, 'factory'):  # 如果有factory屬性
             self.factory.clients.remove(self)  # 將自己從clients列表中移除
 
@@ -148,18 +139,18 @@ def broadcast(message):
 
 
 if __name__ == '__main__':
+    config_file = 'config.txt'
     timeout = 10  # 設置超時時間
     default_ecu_ip = "192.168.88.88"  # 預設ECU IP位置
-    ecu_port = 6666
+    ecu_port = 6666  # ECU端口
+    ecu_udp_port = 8888  # ECU UDP broadcast端口
+    ecu_find_str = b'aRacer'  # ECU發現的關鍵字
     ecuUDPdiscoverStart()  # 啟動ECU UDP發現
 
     factory = RC3serverFactory()  # 創建RC3serverFactory實例
-    ports = range(7777, 7781)  # 服務器端口範圍，這麼做的原因是方便racechrono選擇僅RC3還是RC3+NMEA
-    for port in ports:
-        try:
-            reactor.listenTCP(port, factory)
-            print(f"Server listening on port {port}")
-        except CannotListenError:
-            print(f"Port {port} is already in use, skipping...")
+    reactor.listenTCP(7777, factory)  # 監聽7777端口
+
+    print("Aracer SuperX ECU Wifi protocol to RaceChrono RC3 server started.")
+    print(decoode.get_variable_expr(decoode.convert, 'RC3'))
 
     reactor.run()

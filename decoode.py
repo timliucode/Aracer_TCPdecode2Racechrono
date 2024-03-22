@@ -22,8 +22,8 @@ checksum是LRC校驗碼
 """
 
 import ast
-import inspect
 import datetime
+import inspect
 import math
 
 ID = '0182'  # CAN ID (這是monitor的ID)
