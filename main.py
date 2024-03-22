@@ -85,9 +85,7 @@ class EcuClient(protocol.Protocol):
 
     # 接收數據
     def dataReceived(self, data):
-        clients = self.server.factory.clients  # get the list of connected clients
-        for client in clients:  # loop through the clients
-            client.transport.write(data)  # write the data to each client's transport
+        self.server.factory.client.transport.write(data)
         # 使用 Deferred 將接收到的數據轉交給外部函數處理
         rc3 = defer.Deferred()  # 創建一個Deferred對象
         rc3.addCallback(decoode.convert)  # 添加一個外部decode回調函數
@@ -158,25 +156,34 @@ def broadcast(message):
 
 
 class ProxyServer(protocol.Protocol):  # 6
-    def __init__(self, client):
-        self.client = client
+    def __init__(self, ecu):
+        self.ecu = ecu
+
+    def connectionMade(self):
+        print("Client connected")
+        if hasattr(self, 'factory'):  # 如果有factory屬性
+            self.factory.client = self  # 將自己添加到client屬性中
+        
 
     def dataReceived(self, data):
-        self.client.transport.write(data)
+        self.ecu.transport.write(data)
 
     def connectionLost(self, reason):
-        self.client.transport.loseConnection()
+        self.ecu.transport.loseConnection()
 
 
 class ProxyServerFactory(protocol.ClientFactory):   # 5
-    def __init__(self, client):
-        self.client = client
+    def __init__(self, ecu):
+        self.ecu = ecu
+        self.client = None
 
     def buildProtocol(self, addr):
-        return ProxyServer(self.client)
+        protocol_instance = ProxyServer(self.ecu)  # 創建一個RC3server實例
+        protocol_instance.factory = self  # 设置factory属性
+        return protocol_instance
 
     def clientConnectionFailed(self, connector, reason):
-        self.client.transport.loseConnection()
+        self.ecu.transport.loseConnection()
 
 if __name__ == '__main__':
     timeout = 10  # 設置超時時間
