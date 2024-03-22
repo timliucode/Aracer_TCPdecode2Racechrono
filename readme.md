@@ -1,12 +1,15 @@
 # 這是一個aracer x系列的wifi即時資訊轉racechhrono rc3的轉換程式
 
-雖然有個用了一年多的舊版，但實在太慘了，趁這次重構弄得好看點
-順便把以前奇怪的bug修掉
+雖然有個用了一年多的舊版，能用
+
+但實在太慘，有些小bug、還不夠clean code，趁這次重構弄得好點
 
 ## 適用平台
 只要能跑python的平台都能用
 
 僅在windows、android(termux)測試過
+
+使用Twisted通訊，需安裝twisted套件
 
 ## 內容物
 config.txt是讓你設定初始化ECU所需的IP、init、watchdog等數據
