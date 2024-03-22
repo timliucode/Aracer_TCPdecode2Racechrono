@@ -62,6 +62,7 @@ class EcuClient(protocol.Protocol):
     # 初始化config.txt的內容
     def __init__(self):
         self.watchdog, self.init = read_config('config.txt')
+        self.server = reactor.listenTCP(6767, ProxyServerFactory(self))
 
     # 連線成功後執行
     def connectionMade(self):
@@ -84,11 +85,20 @@ class EcuClient(protocol.Protocol):
 
     # 接收數據
     def dataReceived(self, data):
+        clients = self.server.factory.clients  # get the list of connected clients
+        for client in clients:  # loop through the clients
+            client.transport.write(data)  # write the data to each client's transport
         # 使用 Deferred 將接收到的數據轉交給外部函數處理
         rc3 = defer.Deferred()  # 創建一個Deferred對象
         rc3.addCallback(decoode.convert)  # 添加一個外部decode回調函數
         rc3.addCallback(broadcast)  # 添加一個向server發送數據的回調函數
         rc3.callback(data)  # 調用callback方法，將數據傳遞給回調函數
+
+    def connectionLost(self, reason):
+        self.server.stopListening()
+
+    def connectionFailed(self, reason):
+        self.server.stopListening()
 
 
 # 這個class是用來創建EcuClient的
@@ -146,6 +156,27 @@ def broadcast(message):
     for client in clients:  # 遍歷clients列表
         client.transport.write(message.encode())  # 向每個客戶端發送數據
 
+
+class ProxyServer(protocol.Protocol):  # 6
+    def __init__(self, client):
+        self.client = client
+
+    def dataReceived(self, data):
+        self.client.transport.write(data)
+
+    def connectionLost(self, reason):
+        self.client.transport.loseConnection()
+
+
+class ProxyServerFactory(protocol.ClientFactory):   # 5
+    def __init__(self, client):
+        self.client = client
+
+    def buildProtocol(self, addr):
+        return ProxyServer(self.client)
+
+    def clientConnectionFailed(self, connector, reason):
+        self.client.transport.loseConnection()
 
 if __name__ == '__main__':
     timeout = 10  # 設置超時時間
