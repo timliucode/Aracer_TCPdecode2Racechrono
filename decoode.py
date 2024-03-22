@@ -31,6 +31,13 @@ length = 19  # 1個CAN包加上前綴及checksum的長度
 
 
 def convert(data):
+    # 計數
+    if not hasattr(convert, 'count'):
+        convert.count = 0
+    convert.count += 1
+    if convert.count > 65535:
+        convert.count = 0
+
     buffer = b""  # 用於存放不完整的數據
     buffer += data  # 將收到的數據添加到 buffer 中
     while len(buffer) >= length:  # 如果 buffer 中的數據大於等於一條數據的長度
@@ -95,7 +102,7 @@ def convert(data):
                     RMC = f"GNRMC,{gps_utc_hh}{gps_utc_mm}{gps_utc_ss}.{gps_utc_ms},{gps_valid},{gps_lat_deg}{gps_lat_min}.{gps_lat_sec},{gps_lat_ns},{gps_lon_deg}{gps_lon_min}.{gps_lon_sec},{gps_lon_ew},{gps_speed},{bearing},{date},,,A"
 
                     # $RC3,[time],[count],[xacc],[yacc],[zacc],[gyrox],[gyroy],[gyroz],[rpm/d1],[d2],[a1],[a2],[a3],[a4],[a5],[a6],[a7],[a8],[a9],[a10],[a11],[a12],[a13],[a14],[a15]*[checksum]
-                    RC3 = f"RC3,{gps_utc_hh}{gps_utc_mm}{gps_utc_ss}.{gps_utc_ms},,,,,,,,{rpm},{tps},{vss1},{vss2},{tc_lean_angle},{tc_vss_fr_rate},{volt_batt},{t_eng},{t_air},{afr_wbo2_1},{afr_wbo2_2},{cyl1_eng_ap},{cyl1_eng_ap_decimal},{racelanuh_en}"
+                    RC3 = f"RC3,{gps_utc_hh}{gps_utc_mm}{gps_utc_ss}.{gps_utc_ms},{convert.count},,,,,,,{rpm},{tps},{vss1},{vss2},{tc_lean_angle},{tc_vss_fr_rate},{volt_batt},{t_eng},{t_air},{afr_wbo2_1},{afr_wbo2_2},{cyl1_eng_ap},{cyl1_eng_ap_decimal},{racelanuh_en}"
 
                     GNGGA = f"${GGA}*{checksum(GGA)}\n"
                     GNRMC = f"${RMC}*{checksum(RMC)}\n"
@@ -187,7 +194,14 @@ def get_variable_expr(func, var_name):
     # 遍歷抽象語法樹,找到指定變量的賦值語句
     for node in ast.walk(tree):
         if isinstance(node, ast.Assign) and len(node.targets) == 1:
-            name = node.targets[0].id
+            if isinstance(node.targets[0], ast.Name):
+                name = node.targets[0].id
+            elif isinstance(node.targets[0], ast.Attribute):
+                # Handle attribute object
+                name = node.targets[0].attr
+            else:
+                # Unsupported target type
+                continue
             if name == var_name:
                 # 獲取原始賦值表達式的字符串
                 expr_str = source.split('\n')[node.value.lineno - 1].split('=', 1)[1].strip()
