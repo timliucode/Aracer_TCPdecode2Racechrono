@@ -47,14 +47,14 @@ class EcuUDPdiscover(DatagramProtocol):
 # 建立新的UDP接收器
 def ecuUDPdiscoverStart():
     udp = EcuUDPdiscover()
-    reactor.listenUDP(8888, udp)
+    reactor.listenUDP(ecu_udp_port, udp)
     print("Listening for UDP packets...")
 
 
 # 連接ECU
 def ecuConnect(ecu_ip):
     print('connect ip:', ecu_ip)
-    reactor.connectTCP(ecu_ip, ecu_port, EcuClientFactory())  # 連接ECU
+    reactor.connectTCP(ecu_ip, ecu_port, EcuClientFactory())
 
 
 # 這個class是用來處理ECU通訊的
@@ -62,7 +62,7 @@ class EcuClient(protocol.Protocol):
     # 初始化config.txt的內容
     def __init__(self):
         self.watchdog, self.init = read_config('config.txt')
-        self.server = reactor.listenTCP(6767, ProxyServerFactory(self))
+        self.proxy = reactor.listenTCP(ecu_port, ProxyServerFactory(self))
 
     # 連線成功後執行
     def connectionMade(self):
@@ -85,7 +85,8 @@ class EcuClient(protocol.Protocol):
 
     # 接收數據
     def dataReceived(self, data):
-        self.server.factory.client.transport.write(data)
+        if self.proxy.factory.client is not None:
+            self.proxy.factory.client.transport.write(data)
         # 使用 Deferred 將接收到的數據轉交給外部函數處理
         rc3 = defer.Deferred()  # 創建一個Deferred對象
         rc3.addCallback(decoode.convert)  # 添加一個外部decode回調函數
@@ -93,10 +94,10 @@ class EcuClient(protocol.Protocol):
         rc3.callback(data)  # 調用callback方法，將數據傳遞給回調函數
 
     def connectionLost(self, reason):
-        self.server.stopListening()
+        self.proxy.stopListening()
 
     def connectionFailed(self, reason):
-        self.server.stopListening()
+        self.proxy.stopListening()
 
 
 # 這個class是用來創建EcuClient的
@@ -163,16 +164,12 @@ class ProxyServer(protocol.Protocol):  # 6
         print("Client connected")
         if hasattr(self, 'factory'):  # 如果有factory屬性
             self.factory.client = self  # 將自己添加到client屬性中
-        
 
     def dataReceived(self, data):
         self.ecu.transport.write(data)
 
-    def connectionLost(self, reason):
-        self.ecu.transport.loseConnection()
 
-
-class ProxyServerFactory(protocol.ClientFactory):   # 5
+class ProxyServerFactory(protocol.ClientFactory):  # 5
     def __init__(self, ecu):
         self.ecu = ecu
         self.client = None
@@ -182,15 +179,13 @@ class ProxyServerFactory(protocol.ClientFactory):   # 5
         protocol_instance.factory = self  # 设置factory属性
         return protocol_instance
 
-    def clientConnectionFailed(self, connector, reason):
-        self.ecu.transport.loseConnection()
 
 if __name__ == '__main__':
     timeout = 10  # 設置超時時間
     default_ecu_ip = "192.168.88.88"  # 預設ECU IP位置
     ecu_port = 6666
+    ecu_udp_port = 8888
     ecuUDPdiscoverStart()  # 啟動ECU UDP發現
-
     factory = RC3serverFactory()  # 創建RC3serverFactory實例
     ports = range(7777, 7781)  # 服務器端口範圍，這麼做的原因是方便racechrono選擇僅RC3還是RC3+NMEA
     for port in ports:
