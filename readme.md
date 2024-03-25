@@ -1,26 +1,17 @@
-# 這是一個aracer x系列的wifi即時資訊轉racechhrono rc3的轉換程式
+# Aracer x系列的wifi即時資訊轉racechhrono rc3的轉換程式
+這是一個用於將aracer x系列的wifi即時資訊轉換為racechhrono rc3格式的程式。
 
-雖然有個用了一年多的舊版，能用
-
-但實在太慘，有些小bug、沒有clean code的概念，一年後的現在我直接看不懂以前寫啥，趁這次重構弄得好點
-
-## 適用平台
-只要能跑python的平台都能用
-
-僅在windows、android(termux)測試過
-
-使用Twisted通訊，需安裝twisted套件
-
-## 內容物
-config.txt是讓你設定初始化ECU所需的IP、init、watchdog等數據
-
-main.py是用來與ECU、Racechrono通訊實現用的
-
-decode.py負責將ECU送來的資訊做轉換，轉換後的數據填入Racechrono所接受的RC3協議
-
-TwistedProxyCalcTk.py是用來讓你測試ECU的數據對應的資訊為何
-因為使用tk做GUI，可測試範圍只能給win、mac平台使用
-
-##使用方式
-可以不做任何事，按照預設
-直接執行
+## 文件結構
+config.txt: 用於設定初始化ECU所需的IP、init、watchdog等數據。
+main.py: 負責與ECU和Racechrono進行通訊。
+decode.py: 負責將ECU送來的資訊做轉換，轉換後的數據填入Racechrono所接受的RC3協議。
+TwistedProxyCalcTk.py: 提供一個GUI界面，用於測試ECU的數據對應的資訊。由於使用了tk做GUI，因此只能在win、mac平台上使用。
+## 使用方式
+編輯 config.txt 文件，設定初始化ECU所需的IP、init、watchdog等數據。
+執行 main.py 以開始與ECU和Racechrono的通訊。
+如果需要測試ECU的數據對應的資訊，可以執行 TwistedProxyCalcTk.py。
+## 需求
+Python
+Twisted 套件
+# 測試平台
+這個程式已在Windows和Android (termux)上進行過測試。
