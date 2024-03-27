@@ -152,5 +152,7 @@ if __name__ == '__main__':
 
     print("Aracer SuperX ECU Wifi protocol to RaceChrono RC3 server started.")
     print(decoode.get_variable_expr(decoode.convert, 'RC3'))
+    print("$RC3,[time],[count],[xacc],[yacc],[zacc],[gyrox],[gyroy],[gyroz],[rpm/d1],[d2],[a1],[a2],[a3],[a4],[a5],"
+          "[a6],[a7],[a8],[a9],[a10],[a11],[a12],[a13],[a14],[a15]*[checksum]")
 
     reactor.run()
