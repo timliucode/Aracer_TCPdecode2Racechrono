@@ -1,7 +1,15 @@
 from twisted.internet import reactor, protocol, defer
 from twisted.internet.protocol import DatagramProtocol
+from datetime import datetime
 
 import decoode
+
+
+# print_with_time的時候加上時間
+def print_with_time(*args, **kwargs):
+    current_time = datetime.now().strftime("%H:%M:%S")
+    print(current_time, end=' ')
+    print(*args, **kwargs)
 
 
 # 讀取 config.txt 檔案
@@ -30,7 +38,7 @@ class EcuUDPdiscover(DatagramProtocol):
     # 接收數據
     def datagramReceived(self, datagram, address):
         if ecu_find_str in datagram:  # 如果收到了關鍵字
-            print(f"find ECU at {address}")
+            print_with_time(f"find ECU at {address}")
             ecuConnect(address[0])  # 連接ECU
             self.transport.stopListening()  # 停止監聽
             if self.timeout_deferred.active():  # 如果收到了期望的關鍵字，取消超時操作
@@ -38,7 +46,7 @@ class EcuUDPdiscover(DatagramProtocol):
 
     # 超時操作
     def timeout(self):
-        print("DiscoverTimeout，connect to default ECU IP")
+        print_with_time("DiscoverTimeout，connect to default ECU IP")
         self.transport.stopListening()  # 停止監聽
         ecuConnect(default_ecu_ip)  # 連接預設ECU IP位置
 
@@ -47,12 +55,12 @@ class EcuUDPdiscover(DatagramProtocol):
 def ecuUDPdiscoverStart():
     udp = EcuUDPdiscover()
     reactor.listenUDP(ecu_udp_port, udp)
-    print("Discover ECU...")
+    print_with_time("Discover ECU...")
 
 
 # 連接ECU
 def ecuConnect(ecu_ip):
-    print('connect ecu ip:', ecu_ip)
+    print_with_time('connect ecu ip:', ecu_ip)
     reactor.connectTCP(ecu_ip, ecu_port, EcuClientFactory())  # 連接ECU
 
 
@@ -64,7 +72,7 @@ class EcuClient(protocol.Protocol):
 
     # 連線成功後執行
     def connectionMade(self):
-        print("Connected to the ecu.")
+        print_with_time("Connected to the ecu.")
         self.transport.setTcpNoDelay(True)  # 關閉 Nagle 算法
         self.send_init()  # 發送初始化數據
         reactor.callLater(1, self.send_watchdog)  # 每1秒發送一次 watchdog
@@ -89,9 +97,6 @@ class EcuClient(protocol.Protocol):
         rc3.addCallback(broadcast)  # 添加一個向server發送數據的回調函數
         rc3.callback(data)  # 調用callback方法，將數據傳遞給回調函數
 
-    def connectionLost(self, reason):
-        print("ecu Connection lost, try to reconnect...")
-
 
 # 這個class是用來創建EcuClient的
 class EcuClientFactory(protocol.ReconnectingClientFactory):
@@ -102,18 +107,30 @@ class EcuClientFactory(protocol.ReconnectingClientFactory):
         self.resetDelay()  # 重置延遲
         return self.protocol()
 
+    def clientConnectionFailed(self, connector, reason):
+        print_with_time(f"Connection failed to {connector.getDestination()}")  # 連接失敗
+        if self.continueTrying:
+            self.connector = connector
+            self.retry()
+
+    def clientConnectionLost(self, connector, unused_reason):
+        print_with_time(f"Connection lost to {connector.getDestination()}")  # 連接丟失
+        if self.continueTrying:
+            self.connector = connector
+            self.retry()
+
 
 # 這個class是用來處理RC3server通訊的
 class RC3server(protocol.Protocol):
     # 連線成功後執行
     def connectionMade(self):
-        print("Client connected")
+        print_with_time("Client connected")
         if hasattr(self, 'factory'):  # 如果有factory屬性
             self.factory.clients.append(self)  # 將自己添加到clients列表中
 
     # 連線失敗後執行
     def connectionLost(self, reason):
-        print("Client Connection lost")
+        print_with_time("Client Connection lost")
         if hasattr(self, 'factory'):  # 如果有factory屬性
             self.factory.clients.remove(self)  # 將自己從clients列表中移除
 
@@ -150,9 +167,7 @@ if __name__ == '__main__':
     factory = RC3serverFactory()  # 創建RC3serverFactory實例
     reactor.listenTCP(7777, factory)  # 監聽7777端口
 
-    print("Aracer SuperX ECU Wifi protocol to RaceChrono RC3 server started.")
-    print(decoode.get_variable_expr(decoode.convert, 'RC3'))
-    print("$RC3,[time],[count],[xacc],[yacc],[zacc],[gyrox],[gyroy],[gyroz],[rpm/d1],[d2],[a1],[a2],[a3],[a4],[a5],"
-          "[a6],[a7],[a8],[a9],[a10],[a11],[a12],[a13],[a14],[a15]*[checksum]")
+    print_with_time("Aracer SuperX ECU Wifi protocol to RaceChrono RC3 server started.")
+    print_with_time(decoode.get_variable_expr(decoode.convert, 'RC3'))
 
     reactor.run()

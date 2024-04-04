@@ -20,11 +20,12 @@ data01~07 數據實際內容
 checksum是LRC校驗碼
 
 """
-
+import timeit
 import ast
 import datetime
 import inspect
 import math
+
 
 ID = '0182'  # CAN ID (這是monitor的ID)
 length = 19  # 1個CAN包加上前綴及checksum的長度
@@ -216,3 +217,5 @@ if __name__ == '__main__':
     value = convert(byte_data)
     print(value)
     print(get_variable_expr(convert, 'RC3'))
+
+    print(timeit.timeit('convert(byte_data)', globals=globals(), number=10000))
