@@ -16,7 +16,7 @@ TwistedProxyCalcTk.py: 提供一個GUI界面，用於測試ECU的數據對應的
 執行 main.py 以開始與ECU和Racechrono的通訊。
 
 如有偵錯需求，執行時可帶 `-l` 就會產生log日誌便於分析  
-啟用日誌後會在目錄下產生三個檔案，每次執行都會創建新的檔案 
+啟用日誌後會在目錄下產生三個檔案，每次執行都會創建新的檔案  
 `console_log` 在terminal print出來的資訊會記錄在這裡  
 `ECU_log` ECU送來的資訊會記錄在這裡  
 `RC3_log` 轉換後的資訊會記錄在這裡
