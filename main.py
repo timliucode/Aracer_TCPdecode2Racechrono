@@ -1,15 +1,26 @@
 from twisted.internet import reactor, protocol, defer
 from twisted.internet.protocol import DatagramProtocol
+import sys
 from datetime import datetime
 
 import decoode
 
+# 以下是一些參數設置
+config_file = 'config.txt'
+timeout = 10  # 設置超時時間
+default_ecu_ip = "192.168.88.88"  # 預設ECU IP位置
+ecu_port = 6666  # ECU端口
+ecu_udp_port = 8888  # ECU UDP broadcast端口
+ecu_find_str = b'aRacer'  # ECU發現的關鍵字+
+log_switch = False  # 日誌開關
+
 
 # print_with_time的時候加上時間
 def print_with_time(*args, **kwargs):
-    current_time = datetime.now().strftime("%H:%M:%S")
-    print(current_time, end=' ')
-    print(*args, **kwargs)
+    time = datetime.now().strftime('%H:%M:%S.%f')
+    print(f"{time} ", *args, **kwargs)
+    if log_switch:  # 如果日誌開關打開
+        console_log.write(f"{time} " + ' '.join(map(str, args)) + '\n')
 
 
 # 讀取 config.txt 檔案
@@ -97,6 +108,16 @@ class EcuClient(protocol.Protocol):
         rc3.addCallback(broadcast)  # 添加一個向server發送數據的回調函數
         rc3.callback(data)  # 調用callback方法，將數據傳遞給回調函數
 
+        # 將數據寫入日誌
+        log = defer.Deferred()  # 創建一個Deferred對象
+        log.addCallback(self.log_ecu)  # 添加一個日誌回調函數
+        log.callback(data)  # 調用callback方法，將數據傳遞給回調函數
+
+    # 日誌回調函數
+    def log_ecu(self, data):
+        if log_switch:  # 如果日誌開關打開
+            ecu_log.write(f"{datetime.now()},{data.hex()}\n")  # 寫入日誌
+
 
 # 這個class是用來創建EcuClient的
 class EcuClientFactory(protocol.ReconnectingClientFactory):
@@ -153,15 +174,27 @@ def broadcast(message):
     clients = factory.clients  # 獲取clients列表
     for client in clients:  # 遍歷clients列表
         client.transport.write(message.encode())  # 向每個客戶端發送數據
+    log = defer.Deferred()  # 創建一個Deferred對象
+    log.addCallback(log_rc3)  # 添加一個日誌回調函數
+    log.callback(message)  # 調用callback方法，將數據傳遞給回調函數
+
+
+# 日誌回調函數
+def log_rc3(data):
+    if log_switch:  # 如果日誌開關打開
+        rc3_log.write(f"{datetime.now()},{data}\n")  # 寫入日誌
 
 
 if __name__ == '__main__':
-    config_file = 'config.txt'
-    timeout = 10  # 設置超時時間
-    default_ecu_ip = "192.168.88.88"  # 預設ECU IP位置
-    ecu_port = 6666  # ECU端口
-    ecu_udp_port = 8888  # ECU UDP broadcast端口
-    ecu_find_str = b'aRacer'  # ECU發現的關鍵字
+
+    if "-l" in sys.argv:  # 如果命令行參數中有-l，開啟日誌紀錄
+        log_switch = True
+        date = datetime.now().strftime("%Y%m%d%H%M%S")
+        console_log = open(f"{date}_console_log.txt", 'w')
+        ecu_log = open(f"{date}_ECU_log.txt", 'w')
+        rc3_log = open(f"{date}_RC3_log.txt", 'w')
+        print_with_time("Log switch on")
+
     ecuUDPdiscoverStart()  # 啟動ECU UDP發現
 
     factory = RC3serverFactory()  # 創建RC3serverFactory實例
