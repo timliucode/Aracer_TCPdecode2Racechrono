@@ -89,13 +89,15 @@ def convert(data):
 
                     date = datetime.datetime.now(datetime.UTC).strftime('%d%m%y')
 
+                    gps_lat = f"{gps_lat_deg}{gps_lat_min}.{gps_lat_sec}"
+                    gps_lon = f"{gps_lon_deg}{gps_lon_min}.{gps_lon_sec}"
                     bearingcalc = BearingCalculator()
-                    bearing = bearingcalc.calculate_bearing(gps_lat_sec, gps_lon_sec)
+                    bearing = bearingcalc.calculate_bearing(gps_lat, gps_lon)
 
                     # $GNGGA,041245.800,2450.57532,N,12112.04516,E,2       ,8        ,1.08   ,311.00,M      ,    ,M      ,       , *7F
                     # $定位 ,時間       ,緯度      ,北,經度      ,東,定位品質,可見衛星數,水平精度,海拔  ,海拔單位,高程,高程單位,差分時間,差分站ID*校驗碼
                     # 定位品質說明:0=無效,1=GPS,2=DGPS,3=PPS,6=估算值
-                    GGA = f"GNGGA,{gps_utc_hh}{gps_utc_mm}{gps_utc_ss}.{gps_utc_ms},{gps_lat_deg}{gps_lat_min}.{gps_lat_sec},{gps_lat_ns},{gps_lon_deg}{gps_lon_min}.{gps_lon_sec},{gps_lon_ew},{quality},,,,M,,M,,"
+                    GGA = f"GNGGA,{gps_utc_hh}{gps_utc_mm}{gps_utc_ss}.{gps_utc_ms},{gps_lat},{gps_lat_ns},{gps_lon},{gps_lon_ew},{quality},,,,M,,M,,"
 
                     # $GNRMC,041245.800,A   ,2450.57532,N,12112.04516,E,36.08       ,148.58,020122,     ,         ,       *1D
                     # $定位 ,時間       ,狀態,緯度      ,北,經度       ,東,速度(knot節),方位角 ,日月年,磁偏角,磁偏角方向,模式指示*校驗碼
@@ -133,20 +135,15 @@ class BearingCalculator:
         bearing (float): 航向角(0-360度)
         """
         # 轉為小數
-        lat1_dec = "0." + str(self.lat1)
-        lon1_dec = "0." + str(self.lon1)
-        lat2_dec = "0." + str(lat)
-        lon2_dec = "0." + str(lon)
+        lat1_min = float(self.lat1)
+        lon1_min = float(self.lon1)
+        lat2_min = float(lat)
+        lon2_min = float(lon)
 
         # 上一次的經緯度
         self.lat1 = lat
         self.lon1 = lon
 
-        # 轉換為float
-        lat1_min = float(lat1_dec)
-        lon1_min = float(lon1_dec)
-        lat2_min = float(lat2_dec)
-        lon2_min = float(lon2_dec)
 
         # 計算差值
         dlat = lat2_min - lat1_min
