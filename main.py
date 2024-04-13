@@ -120,25 +120,20 @@ class EcuClient(protocol.Protocol):
 
 
 # 這個class是用來創建EcuClient的
-class EcuClientFactory(protocol.ReconnectingClientFactory):
+class EcuClientFactory(protocol.ClientFactory):
     protocol = EcuClient  # 設置protocol屬性為EcuClient
 
     # 創建protocol
     def buildProtocol(self, addr):
-        self.resetDelay()  # 重置延遲
         return self.protocol()
 
     def clientConnectionFailed(self, connector, reason):
         print_with_time(f"Connection failed to {connector.getDestination()}")  # 連接失敗
-        if self.continueTrying:
-            self.connector = connector
-            self.retry()
+        ecuUDPdiscoverStart()  # 重新啟動ECU UDP發現
 
     def clientConnectionLost(self, connector, unused_reason):
         print_with_time(f"Connection lost to {connector.getDestination()}")  # 連接丟失
-        if self.continueTrying:
-            self.connector = connector
-            self.retry()
+        ecuUDPdiscoverStart()  # 重新啟動ECU UDP發現
 
 
 # 這個class是用來處理RC3server通訊的
@@ -201,6 +196,7 @@ if __name__ == '__main__':
     reactor.listenTCP(7777, factory)  # 監聽7777端口
 
     print_with_time("Aracer SuperX ECU Wifi protocol to RaceChrono RC3 server started.")
+    print_with_time("$RC3,[time],[count],[xacc],[yacc],[zacc],[gyrox],[gyroy],[gyroz],[rpm/d1],[d2],[a1],[a2],[a3],[a4],[a5],[a6],[a7],[a8],[a9],[a10],[a11],[a12],[a13],[a14],[a15]*[checksum]")
     print_with_time(decoode.get_variable_expr(decoode.convert, 'RC3'))
 
     reactor.run()
