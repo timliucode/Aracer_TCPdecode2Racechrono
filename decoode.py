@@ -20,12 +20,12 @@ data01~07 數據實際內容
 checksum是LRC校驗碼
 
 """
+import time
 import timeit
 import ast
 import datetime
 import inspect
 import math
-
 
 ID = '0182'  # CAN ID (這是monitor的ID)
 length = 19  # 1個CAN包加上前綴及checksum的長度
@@ -94,6 +94,12 @@ def convert(data):
                     bearingcalc = BearingCalculator()
                     bearing = bearingcalc.calculate_bearing(gps_lat, gps_lon)
 
+                    speed_acc = acceleration()
+                    ms2 = speed_acc.calculate(float(gps_speed) * 0.514444444)  # 將速度從 knot 轉換為 m/s後計算加速度
+
+                    rpm_acc = acceleration()
+                    rps2 = rpm_acc.calculate(int(rpm) / 60)  # 將轉速值轉換為每秒轉（轉/秒）後計算加速度(轉/秒²)
+
                     # $GNGGA,041245.800,2450.57532,N,12112.04516,E,2       ,8        ,1.08   ,311.00,M      ,    ,M      ,       , *7F
                     # $定位 ,時間       ,緯度      ,北,經度      ,東,定位品質,可見衛星數,水平精度,海拔  ,海拔單位,高程,高程單位,差分時間,差分站ID*校驗碼
                     # 定位品質說明:0=無效,1=GPS,2=DGPS,3=PPS,6=估算值
@@ -105,7 +111,7 @@ def convert(data):
                     RMC = f"GNRMC,{gps_utc_hh}{gps_utc_mm}{gps_utc_ss}.{gps_utc_ms},{gps_valid},{gps_lat_deg}{gps_lat_min}.{gps_lat_sec},{gps_lat_ns},{gps_lon_deg}{gps_lon_min}.{gps_lon_sec},{gps_lon_ew},{gps_speed},{bearing},{date},,,A"
 
                     # $RC3,[time],[count],[xacc],[yacc],[zacc],[gyrox],[gyroy],[gyroz],[rpm/d1],[d2],[a1],[a2],[a3],[a4],[a5],[a6],[a7],[a8],[a9],[a10],[a11],[a12],[a13],[a14],[a15]*[checksum]
-                    RC3 = f"RC3,{gps_utc_hh}{gps_utc_mm}{gps_utc_ss}.{gps_utc_ms},{convert.count},,,,,,,{rpm},{tps},{vss1},{vss2},{tc_lean_angle},{tc_vss_fr_rate},{volt_batt},{t_eng},{t_air},{afr_wbo2_1},{afr_wbo2_2},{cyl1_eng_ap},{cyl1_eng_ap_decimal},{racelanuh_en}"
+                    RC3 = f"RC3,{gps_utc_hh}{gps_utc_mm}{gps_utc_ss}.{gps_utc_ms},{convert.count},,,,,,,{rpm},{tps},{vss1}{vss2},{tc_lean_angle},{tc_vss_fr_rate},{volt_batt},{t_eng},{t_air},{afr_wbo2_1},{afr_wbo2_2},{cyl1_eng_ap},{cyl1_eng_ap_decimal},{racelanuh_en},,,{ms2},{rps2}"
 
                     GNGGA = f"${GGA}*{checksum(GGA)}\n"
                     GNRMC = f"${RMC}*{checksum(RMC)}\n"
@@ -144,7 +150,6 @@ class BearingCalculator:
         self.lat1 = lat
         self.lon1 = lon
 
-
         # 計算差值
         dlat = lat2_min - lat1_min
         dlon = lon2_min - lon1_min
@@ -165,6 +170,24 @@ class BearingCalculator:
             return output
         else:
             return self.output
+
+
+class acceleration:
+    def __init__(self):
+        self.time = time.time()
+        self.speed = 0
+
+    def calculate(self, speed):
+        current_time = time.time()
+        dt = current_time - self.time
+        speed_diff = speed - self.speed
+        self.speed = speed
+        self.time = current_time
+        if dt == 0:
+            return 0
+        acceleration = speed_diff / dt
+        return f"{acceleration:.3f}"
+
 
 
 def checksum(cs):  # 計算NMEA0183校驗和
@@ -209,7 +232,7 @@ def get_variable_expr(func, var_name):
 
 
 if __name__ == '__main__':
-    data = "f801c00e00000182000801043a2002581901d4f801c00e0000018200080202654e791802a6b7f801c00e00000182000803454100008000801ef801c00e0000018200080400800000002b00f8f801c00e00000182000805008000053a3a09a0f801c00e00000182000806fb6428000000001af801c00e000001820008070000001000000090f801c00e0000018200068800008500ff00009d"
+    data = "f801c00e0000018200080103252402581706e3f801c00e0000018200080209854e780d0e1026f801c00e0000018200080345410020753371e5f801c00e00000182000804fa6d7f2bbaff27b2f801c00e00000182000805ff64008d704309f6f801c00e00000182000806fb5b2c09290b1cc6f801c00e00000182000807000000100000038df801c00e000001820006887e538300ff0000ce"
     byte_data = bytes.fromhex(data)
     value = convert(byte_data)
     print(value)
