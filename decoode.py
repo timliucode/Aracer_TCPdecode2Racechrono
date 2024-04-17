@@ -20,6 +20,13 @@ data01~07 數據實際內容
 checksum是LRC校驗碼
 
 """
+
+"""
+to do:
+vss、afr修正
+減少無謂的格式轉換
+"""
+
 import time
 import timeit
 import ast
@@ -30,12 +37,20 @@ import math
 ID = '0182'  # CAN ID (這是monitor的ID)
 length = 19  # 1個CAN包加上前綴及checksum的長度
 
+# 暫時性的，趕著比賽可用
 # rear Tire setting
 width = 120  # 輪胎寬度(mm)
 aspect_ratio = 80  # 輪胎側比(%)
 rim_diameter = 12  # 輪圈直徑(inch)
 # 計算輪胎圓周長(cm)
 tire_circumference = ((width * aspect_ratio * 2 / 1000) + (rim_diameter * 2.54)) * math.pi / 100
+# 齒比
+font_gear_in = 12
+font_gear_out = 39
+rear_gear_in = 13
+rear_gear_out = 40
+gear_ratio = (font_gear_out / font_gear_in) * (rear_gear_out / rear_gear_in)
+
 
 
 def convert(data):
@@ -107,9 +122,11 @@ def convert(data):
                     rpm_acc = acceleration()
                     rps2 = rpm_acc.calculate(int(rpm) / 60)  # 將轉速值轉換為每秒轉（轉/秒）後計算加速度(轉/秒²)
 
-                    Reduction_Ratio = f"{int(rpm) / ((float(gps_speed) * 30.8666667)/tire_circumference):.3f}"
+                    Reduction_Ratio = f"{int(rpm) / ((float(gps_speed) * 30.8666667) / tire_circumference):.3f}"
                     rr_acc = acceleration()
                     irrs2 = rr_acc.calculate(float(Reduction_Ratio))
+
+                    alpha_ratio = f"{float(Reduction_Ratio) / gear_ratio:.3f}"
 
                     # $GNGGA,041245.800,2450.57532,N,12112.04516,E,2       ,8        ,1.08   ,311.00,M      ,    ,M      ,       , *7F
                     # $定位 ,時間       ,緯度      ,北,經度      ,東,定位品質,可見衛星數,水平精度,海拔  ,海拔單位,高程,高程單位,差分時間,差分站ID*校驗碼
@@ -122,7 +139,7 @@ def convert(data):
                     RMC = f"GNRMC,{gps_utc_hh}{gps_utc_mm}{gps_utc_ss}.{gps_utc_ms},{gps_valid},{gps_lat_deg}{gps_lat_min}.{gps_lat_sec},{gps_lat_ns},{gps_lon_deg}{gps_lon_min}.{gps_lon_sec},{gps_lon_ew},{gps_speed},{bearing},{date},,,A"
 
                     # $RC3,[time],[count],[xacc],[yacc],[zacc],[gyrox],[gyroy],[gyroz],[rpm/d1],[d2],[a1],[a2],[a3],[a4],[a5],[a6],[a7],[a8],[a9],[a10],[a11],[a12],[a13],[a14],[a15]*[checksum]
-                    RC3 = f"RC3,{gps_utc_hh}{gps_utc_mm}{gps_utc_ss}.{gps_utc_ms},{convert.count},,,,,,,{rpm},{tps},{vss1}{vss2},{tc_lean_angle},{tc_vss_fr_rate},{volt_batt},{t_eng},{t_air},{afr_wbo2_1},{afr_wbo2_2},{cyl1_eng_ap},{cyl1_eng_ap_decimal},{racelanuh_en},{Reduction_Ratio},{irrs2},{ms2},{rps2}"
+                    RC3 = f"RC3,{gps_utc_hh}{gps_utc_mm}{gps_utc_ss}.{gps_utc_ms},{convert.count},,,,,,,{rpm},{tps},{vss1}{vss2},{tc_lean_angle},{tc_vss_fr_rate},{volt_batt},{t_eng},{t_air},{afr_wbo2_1}{afr_wbo2_2},{cyl1_eng_ap},{cyl1_eng_ap_decimal},{racelanuh_en},{Reduction_Ratio},{alpha_ratio},{irrs2},{ms2},{rps2}"
 
                     GNGGA = f"${GGA}*{checksum(GGA)}\n"
                     GNRMC = f"${RMC}*{checksum(RMC)}\n"
@@ -198,7 +215,6 @@ class acceleration:
             return 0
         acceleration = speed_diff / dt
         return f"{acceleration:.3f}"
-
 
 
 def checksum(cs):  # 計算NMEA0183校驗和
