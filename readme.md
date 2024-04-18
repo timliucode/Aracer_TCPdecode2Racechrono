@@ -13,7 +13,7 @@
 ## 下載及更新
 
 將下列字串複製到terminal執行  
-`git clone https://github.com/timliucode/Aracer_TCPdecode2Racechrono.git && cd Aracer_TCPdecode2Racechrono && python main.py` 
+`curl -sLo installer.sh https://github.com/timliucode/Aracer_TCPdecode2Racechrono/installer.sh && chmod +x installer.sh && ./installer.sh`
 
 如果要更新請在目錄內執行`git pull`
 
