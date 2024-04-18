@@ -13,7 +13,7 @@
 ## 下載及更新
 
 將下列字串複製到terminal執行  
-`curl -sLo installer.sh https://github.com/timliucode/Aracer_TCPdecode2Racechrono/installer.sh && chmod +x installer.sh && ./installer.sh`
+`curl -sLo installer.sh https://raw.githubusercontent.com/timliucode/Aracer_TCPdecode2Racechrono/main/installer.sh && chmod +x installer.sh && ./installer.sh`
 
 如果要更新請在目錄內執行`git pull`
 
