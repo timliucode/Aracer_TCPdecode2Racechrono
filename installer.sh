@@ -23,11 +23,11 @@ check_python()
         echo "Python installed"
         # 输出 Python 的版本信息
         python3 --version
-        check_Twisted
     else
         echo "Python not installed"
         pkg install python -y
     fi
+    check_Twisted
 }
 
 # 检查 Twisted 是否安装
@@ -36,11 +36,29 @@ check_Twisted()
     if python -c "import twisted" &> /dev/null; then
         echo "Twisted installed"
         # 输出 Twisted 的版本信息
-        python -c "import twisted; print('Twisted 版本：', twisted.__version__)"
+        python3 -c "import twisted; print('Twisted 版本：', twisted.__version__)"
     else
         echo "Twisted not installed"
+        echo "正在使用 pip 安装 Twisted..."
+        python3 -m pip install twisted
 
     fi
+    check_Aracer_TCPdecode2Racechrono
 }
+
+# 確認是否已經下載了Aracer_TCPdecode2Racechrono
+check_Aracer_TCPdecode2Racechrono()
+{
+    if [ -d "Aracer_TCPdecode2Racechrono" ]; then
+        echo "Aracer_TCPdecode2Racechrono downloaded"
+        cd Aracer_TCPdecode2Racechrono
+        git pull origin main
+    else
+        echo "Aracer_TCPdecode2Racechrono not downloaded"
+        echo "正在下载 Aracer_TCPdecode2Racechrono..."
+        git clone https://github.com/timliucode/Aracer_TCPdecode2Racechrono.git
+    fi
+}
+
 
 check_network
