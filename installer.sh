@@ -1,4 +1,5 @@
 #!/bin/bash
+
 pkg install git -y
 pkg install python -y
 python3 -m pip install twisted
