@@ -120,9 +120,15 @@ def convert(data):
                     ms2 = speed_acc.calculate(float(gps_speed) * 0.514444444)  # 將速度從 knot 轉換為 m/s後計算加速度
 
                     rpm_acc = acceleration()
-                    rps2 = rpm_acc.calculate(int(rpm) / 60)  # 將轉速值轉換為每秒轉（轉/秒）後計算加速度(轉/秒²)
+                    if rpm != 0:
+                        rps2 = rpm_acc.calculate(int(rpm) / 60)  # 將轉速值轉換為每秒轉（轉/秒）後計算加速度(轉/秒²)
+                    else:
+                        rps2 = 0
 
-                    Reduction_Ratio = f"{int(rpm) / ((float(gps_speed) * 30.8666667) / tire_circumference):.3f}"
+                    if gps_speed != 0 and rpm != 0:
+                        Reduction_Ratio = f"{int(rpm) / ((float(gps_speed) * 30.8666667) / tire_circumference):.3f}"
+                    else:
+                        Reduction_Ratio = 0
                     rr_acc = acceleration()
                     irrs2 = rr_acc.calculate(float(Reduction_Ratio))
 
