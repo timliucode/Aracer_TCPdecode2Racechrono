@@ -104,6 +104,24 @@ def convert(data):
                     racelanuh_en = message[14]
                     tc_status = message[15]
                 case _:
+                    # 確保所有在此分支使用到的變數都有預設值，避免 NameError
+                    gps_valid = locals().get('gps_valid', 'V')
+                    gps_speed = locals().get('gps_speed', '0')
+                    rpm = locals().get('rpm', 0)
+                    tps = locals().get('tps', 0)
+                    vss1 = locals().get('vss1', 0)
+                    vss2 = locals().get('vss2', 0)
+                    tc_lean_angle = locals().get('tc_lean_angle', 0)
+                    tc_vss_fr_rate = locals().get('tc_vss_fr_rate', 0)
+                    volt_batt = locals().get('volt_batt', 0)
+                    t_eng = locals().get('t_eng', 0)
+                    t_air = locals().get('t_air', 0)
+                    afr_wbo2_1 = locals().get('afr_wbo2_1', 0)
+                    afr_wbo2_2 = locals().get('afr_wbo2_2', 0)
+                    cyl1_eng_ap = locals().get('cyl1_eng_ap', 0)
+                    cyl1_eng_ap_decimal = locals().get('cyl1_eng_ap_decimal', 0)
+                    racelanuh_en = locals().get('racelanuh_en', 0)
+
                     if gps_valid == "A":
                         quality = 1
                     else:  # 如果GPS無效
@@ -116,17 +134,44 @@ def convert(data):
                     bearingcalc = BearingCalculator()
                     bearing = bearingcalc.calculate_bearing(gps_lat, gps_lon)
 
+                    # 速度、轉速的計算：加入保護以避免除以零或傳入非數字
+                    try:
+                        gps_speed_f = float(gps_speed)
+                    except Exception:
+                        gps_speed_f = 0.0
+
                     speed_acc = acceleration()
-                    ms2 = speed_acc.calculate(float(gps_speed) * 0.514444444)  # 將速度從 knot 轉換為 m/s後計算加速度
+                    ms2 = speed_acc.calculate(gps_speed_f * 0.514444444)  # 將速度從 knot 轉換為 m/s後計算加速度
+
+                    try:
+                        rpm_i = int(rpm)
+                    except Exception:
+                        rpm_i = 0
 
                     rpm_acc = acceleration()
-                    rps2 = rpm_acc.calculate(int(rpm) / 60)  # 將轉速值轉換為每秒轉（轉/秒）後計算加速度(轉/秒²)
+                    rps2 = rpm_acc.calculate(rpm_i / 60 if rpm_i is not None else 0)  # 將轉速值轉換為每秒轉（轉/秒）後計算加速度(轉/秒²)
 
-                    Reduction_Ratio = f"{int(rpm) / ((float(gps_speed) * 30.8666667) / tire_circumference):.3f}"
+                    # 計算 Reduction_Ratio 時可能會遇到 gps_speed_f == 0，需保護
+                    try:
+                        denom = (gps_speed_f * 30.8666667) / tire_circumference
+                        if denom == 0:
+                            Reduction_Ratio = "0.000"
+                        else:
+                            Reduction_Ratio = f"{rpm_i / denom:.3f}"
+                    except Exception:
+                        Reduction_Ratio = "0.000"
+
                     rr_acc = acceleration()
-                    irrs2 = rr_acc.calculate(float(Reduction_Ratio))
+                    # rr_acc.calculate 期望 numeric 輸入，嘗試轉型
+                    try:
+                        irrs2 = rr_acc.calculate(float(Reduction_Ratio))
+                    except Exception:
+                        irrs2 = "0.000"
 
-                    alpha_ratio = f"{float(Reduction_Ratio) / gear_ratio:.3f}"
+                    try:
+                        alpha_ratio = f"{float(Reduction_Ratio) / gear_ratio:.3f}"
+                    except Exception:
+                        alpha_ratio = "0.000"
 
                     # $GNGGA,041245.800,2450.57532,N,12112.04516,E,2       ,8        ,1.08   ,311.00,M      ,    ,M      ,       , *7F
                     # $定位 ,時間       ,緯度      ,北,經度      ,東,定位品質,可見衛星數,水平精度,海拔  ,海拔單位,高程,高程單位,差分時間,差分站ID*校驗碼
